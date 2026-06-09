@@ -1,0 +1,44 @@
+# Secrets — never commit
+.env
+.env.local
+
+# State — each user gets a fresh DB (see DESIGN §8)
+*.db
+
+# Generated discovery outputs (re-runnable; not source)
+discovery.csv
+discovery.html
+review.csv
+
+# Real company list stays out by default (it can live in Notion instead). matcher.yml
+# IS committed in your own (private) deployment repo — it holds no secrets, only
+# terms/locations/profile/Notion db ids — so config changes are just edit + push.
+# Using CSV mode on the scheduler? Force-commit your list to your private repo:
+#   git add -f config/companies.csv
+config/companies.csv
+
+# Personal documents — a CV is only an input to `profile`, never committed
+*.pdf
+cv.*
+*resume*
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# macOS
+.DS_Store
+
+# Claude Code personal settings (team-wide rules go in .claude/settings.json)
+.claude/settings.local.json
+
+# Editor
+.idea/
+.vscode/
+*.swp

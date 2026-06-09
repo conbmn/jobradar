@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jobradar"
+version = "0.1.0"
+description = "A personal job-posting monitor."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12"
+# Exact versions are pinned in requirements.txt (the reproducible install path);
+# this list declares only what the package needs, to avoid version drift.
+dependencies = [
+    "requests",
+    "PyYAML",
+    "python-dotenv",
+]
+
+[project.optional-dependencies]
+# Optional LLM matching tier (DESIGN §4.4 tier 5) + `profile` command (pypdf reads
+# PDF CVs): pip install -e ".[llm]"
+llm = ["anthropic", "pypdf"]
+# Test suite: pip install -e ".[dev]" && pytest
+dev = ["pytest"]
+
+[project.scripts]
+jobradar = "jobradar.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["jobradar*"]

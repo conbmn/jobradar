@@ -1,0 +1,10 @@
+# Python 3.12 required
+# Pin with: pip install -r requirements.txt
+requests==2.32.3
+PyYAML==6.0.2
+python-dotenv==1.0.1
+
+# Optional LLM matching tier — only needed when llm_tier.enabled: true,
+# or for `python -m jobradar profile <cv>` (pypdf reads PDF CVs).
+anthropic==0.105.2
+pypdf==6.13.0

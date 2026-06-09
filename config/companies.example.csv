@@ -1,0 +1,11 @@
+name,careers_url,ats,slug
+# One example per supported ATS. Copy this to config/companies.csv and edit.
+# Columns: name, careers_url, ats, slug
+#   ats  — one of: greenhouse, lever, ashby, personio
+#   slug — the company's identifier on that ATS (case-sensitive for ashby).
+#          Leave ats/slug blank — `detect` (or the next run) fills them in for you;
+#          you only really need the name + careers_url.
+Helsing,https://helsing.ai/jobs,greenhouse,helsing
+Spotify,https://www.lifeatspotify.com/jobs,lever,spotify
+ElevenLabs,https://elevenlabs.io/careers,ashby,ElevenLabs
+Personio,https://www.personio.com/careers,personio,personio

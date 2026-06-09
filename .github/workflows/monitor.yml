@@ -1,0 +1,63 @@
+name: jobradar monitor
+
+# Runs the steady-state pass (scrape → diff → match → alert) twice daily, and
+# refreshes the Notion roles table. Config (config/matcher.yml) is committed in this
+# private repo and read straight from the checkout — change config by editing the
+# file and pushing, no secret to re-sync. Companies come from Notion. State
+# (jobradar.db) is persisted between runs via actions/cache. See DESIGN §4.1, §8.
+#
+# Required repo secrets (Settings → Secrets and variables → Actions) — credentials only:
+#   NOTION_TOKEN, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
+#   (ANTHROPIC_API_KEY only if the LLM tier is enabled)
+
+on:
+  schedule:
+    # GitHub cron is UTC and ignores DST. Times below target 09:00 / 17:00 CET,
+    # anchored to summer (CEST = UTC+2); in winter (CET = UTC+1) they land an hour
+    # later locally (10:00 / 18:00). Minutes are offset to :13 (not :00) on purpose:
+    # on-the-hour schedules sit in GitHub's most congested queue and are the most
+    # likely to be delayed or silently skipped.
+    - cron: "13 7 * * *"   # 07:13 UTC → 09:13 CEST
+    - cron: "13 15 * * *"  # 15:13 UTC → 17:13 CEST
+  workflow_dispatch: {}    # allow manual runs from the Actions tab
+
+# Avoid two runs racing on the same cached DB.
+concurrency:
+  group: jobradar-monitor
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Restore state DB
+        uses: actions/cache@v4
+        with:
+          path: jobradar.db
+          # Unique key per run → save always succeeds; restore-keys pulls the
+          # most recent prior DB so 'seen' state carries over between runs.
+          key: jobradar-db-${{ github.run_id }}
+          restore-keys: |
+            jobradar-db-
+
+      # config/matcher.yml is committed (private repo), so it's already in the checkout.
+
+      - name: Run monitor
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python -m jobradar run

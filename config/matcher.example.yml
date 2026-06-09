@@ -1,0 +1,105 @@
+# Matcher configuration — copy this to config/matcher.yml and tune to your profile:
+#   cp config/matcher.example.yml config/matcher.yml
+# In your own (private) deployment repo, commit config/matcher.yml — the scheduler
+# reads it straight from the checkout. It holds no secrets (those live in .env.local
+# / GitHub Actions secrets), only your terms, locations, and profile.
+# All thresholds and term lists are config, not code (see DESIGN §4.4).
+
+# Where the company list comes from (DESIGN §4.1):
+#   csv    — config/companies.csv (simple, offline, no account)
+#   notion — a Notion database (friendly: dropdowns + machine-filled ats/slug;
+#            requires NOTION_TOKEN in .env.local and the database id below)
+companies_source: csv
+notion:
+  companies_database_id: ""     # only used when companies_source: notion
+  roles_database_id: ""         # if set, discover also upserts matching roles here
+
+# Which render targets `discover` writes (DESIGN §4.6): any of csv, html, notion.
+# Omit this key to write all three (notion only if roles_database_id is set). A
+# Notion-only setup can use `outputs: [notion]` to skip the local discovery.csv/.html.
+# outputs: [csv, html, notion]
+
+# Telegram behaviour
+notify:
+  heartbeat: true               # on a run with no new alerts, still send a "ran, nothing new" ping
+
+# Tier 1: include if any of these appear in the job title (regex, case-insensitive)
+include_terms:
+  - "operations research"
+  - "\\bOR\\b"
+  - "optimization"
+  - "decision scien"
+  - "data scien"
+  - "forward deployed"
+  - "quant"
+  - "machine learning"
+  - "applied scien"
+
+# Seniority boost: extra score points if the title contains any of these
+seniority_terms:
+  - "staff"
+  - "senior"
+  - "principal"
+  - "lead"
+  - "founding"
+
+# Tier 2: exclude if any of these appear in the job title (applied after include)
+exclude_terms:
+  - "intern"
+  - "sales"
+  - "marketing"
+  - "recruiter"
+  - "account"
+  - "business development"
+
+# Tier 3: accepted locations (substring, case-insensitive). HARD filter — a role
+# whose location is outside these is dropped. Add "remote"/"emea"/"eu" to widen;
+# blank/unspecified locations are kept.
+locations:
+  - "europe"
+  - "london"
+  - "amsterdam"
+  - "berlin"
+  - "munich"
+
+# Tier 4: scoring weights and alert threshold
+scoring:
+  include_match_points: 2       # per matched include term
+  seniority_bonus: 1            # if any seniority term matches
+  location_match_bonus: 1       # if location is in the accepted set
+  alert_threshold: 3.0          # minimum score to trigger a Telegram alert
+
+# Optional LLM matching tier (DESIGN §4.4 tier 5) — set enabled: true to use.
+# This is what makes matching "smart": it reads the job description and your profile
+# below, scores fit 0–1, and re-ranks/vetoes keyword false-positives. It runs ONLY on
+# keyword survivors (tiers 1–4), so cost scales with the small survivor set, not the
+# full scrape — pennies/month on Haiku.
+#
+# Requires ANTHROPIC_API_KEY in .env.local (and as a repo secret for the scheduler).
+# Get one at https://console.anthropic.com. The CV → profile command below also needs
+# it. WITHOUT a key, leave this `enabled: false` and the tool still works in
+# keyword-only mode (tiers 1–4) — less precise, no CV personalization, but free.
+llm_tier:
+  enabled: false
+  model: "claude-haiku-4-5"     # cheap + plenty for title-fit; or claude-sonnet-4-6
+  min_fit: 0.6                   # soft-fit cutoff to show/alert (0-1). Deal-breakers
+                                 # below fire regardless of this.
+  # Two personalization fields (see DESIGN §4.4):
+  #   profile      — SOFT fit: who you are + preferences → a graded 0-1 score.
+  #   deal_breakers — HARD vetoes: any clear hit caps the score at 0.15 (dropped),
+  #                   no matter how well the role otherwise fits. Keep these binary
+  #                   (languages you lack, visa/clearance, on-site-only, seniority
+  #                   floor); put nuanced preferences in profile, not here.
+  # Edit by hand, or auto-generate the profile from your CV (stays local):
+  #   python -m jobradar profile path/to/your-cv.pdf
+  profile: >
+    Operations research / optimization / data science professional. Works in
+    English and German. Strong fit:
+    operations research, optimization, decision science, data science, applied
+    science, forward-deployed, and quant roles, ideally at senior/staff/lead
+    level. Weak fit: pure software engineering, sales, marketing, recruiting,
+    or junior/intern positions.
+  deal_breakers: >
+    Requires fluency in a language OTHER THAN English or German (English and German
+    are both fine — only a third language is the deal-breaker).
+    Requires an active security clearance or work authorization the candidate lacks.
