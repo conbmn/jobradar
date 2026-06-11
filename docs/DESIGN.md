@@ -277,7 +277,12 @@ classification — cheap enough to run on every keyword survivor.
 - **GitHub Actions (recommended)**: scheduled workflow (cron), runs in the cloud for
   free, nothing local needs to be awake. State persistence between ephemeral runs:
   commit the SQLite file back to the repo, or save/restore it as a workflow artifact.
-  Secrets via repo secrets.
+  Secrets via repo secrets. **Caveat:** GitHub's *own* cron is best-effort — it delays
+  scheduled runs by hours or drops them under load, and never back-fills a skip. For
+  punctual runs, keep one GitHub cron line as a daily fallback but make the **primary**
+  trigger an external cron (e.g. the free cron-job.org) that calls the workflow's
+  `workflow_dispatch` endpoint on time. Overlap is harmless: duplicate runs are deduped
+  by the DB (notified flag) and serialized by a concurrency group.
 - **`launchd` (macOS)**: simplest local option, but only fires when the Mac is awake.
 - **Cheap always-on box** (VPS / Fly.io / Raspberry Pi): if fully self-hosted is
   wanted.

@@ -12,24 +12,15 @@ name: jobradar monitor
 
 on:
   schedule:
-    # GitHub cron is UTC and ignores DST. Times below target 09:00 / 17:00 CET,
-    # anchored to summer (CEST = UTC+2); in winter (CET = UTC+1) they land an hour
-    # later locally (10:00 / 18:00). Minutes are offset off-the-hour on purpose:
-    # on-the-hour schedules sit in GitHub's most congested queue and are the most
-    # likely to be delayed or silently skipped.
-    #
-    # GitHub's scheduler is best-effort: it delays runs by hours or drops them
-    # entirely under load, and never back-fills a skipped run. As a hedge we fire
-    # TWICE per window (~40 min apart). If the primary is skipped, the backup
-    # usually lands. No duplicate alerts: the backup restores the DB cache the
-    # primary saved and sees those roles already notified (0 alerted). The
-    # `concurrency` group below prevents the two from overlapping. (For truly
-    # on-time runs, drive workflow_dispatch from an external cron instead.)
-    - cron: "13 7 * * *"   # 07:13 UTC → 09:13 CEST  (morning, primary)
-    - cron: "53 7 * * *"   # 07:53 UTC → 09:53 CEST  (morning, backup)
-    - cron: "13 15 * * *"  # 15:13 UTC → 17:13 CEST  (evening, primary)
-    - cron: "53 15 * * *"  # 15:53 UTC → 17:53 CEST  (evening, backup)
-  workflow_dispatch: {}    # allow manual runs from the Actions tab
+    # GitHub's scheduler is best-effort: it delays scheduled runs by hours or
+    # drops them entirely under load, and never back-fills a skipped run. This
+    # single daily cron is a reliable-enough FALLBACK. For punctual runs at exact
+    # times, point an external cron (e.g. the free cron-job.org) at this workflow's
+    # workflow_dispatch endpoint — it fires within seconds, on time. Duplicate runs
+    # are deduped by the DB (notified flag) and serialized by the concurrency group
+    # below, so an overlap costs at most one extra scrape.
+    - cron: "13 11 * * *"  # ~daily fallback (UTC, ignores DST); edit to taste
+  workflow_dispatch: {}    # manual runs + the external-cron trigger entrypoint
 
 # Avoid two runs racing on the same cached DB.
 concurrency:
