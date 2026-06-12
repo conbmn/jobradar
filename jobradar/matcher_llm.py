@@ -101,6 +101,10 @@ class LLMMatcher:
         resp = self.client.messages.parse(
             model=self.model,
             max_tokens=1024,
+            temperature=0,  # determinism: a borderline role otherwise draws a different
+                            # fit each run (the score is re-computed every pass), flipping
+                            # in and out of the feed across the min_fit cutoff. temp=0
+                            # makes the verdict stable run-to-run.
             thinking={"type": "disabled"},  # simple classification — no thinking needed
             system=self._system(),
             messages=[{"role": "user", "content": content}],
